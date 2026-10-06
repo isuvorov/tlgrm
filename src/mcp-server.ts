@@ -8,7 +8,7 @@ import { stopDaemon } from "./api/stop-daemon.ts";
 import { tailLogs } from "./api/tail-logs.ts";
 import { BIN_NAME, VERSION } from "./constants.ts";
 import { registerTelegramTools } from "./telegram-tools.ts";
-import { ACCOUNT_ENV, type Config, loadConfig } from "./utils/config.ts";
+import { type Config, loadConfig } from "./utils/config.ts";
 
 /**
  * The MCP tool registry, with no side effects on import.
