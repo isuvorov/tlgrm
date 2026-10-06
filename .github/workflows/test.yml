@@ -1,0 +1,41 @@
+name: Test
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    # darwin-only package ("os": ["darwin"]), and the suite spawns real owner
+    # processes over unix sockets — the same platform the tool runs on.
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Not lts/*: node runs the TypeScript sources directly here, which
+          # needs >= 23.6. An older LTS fails on the first import.
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Types
+        run: pnpm run types
+
+      - name: Test
+        run: pnpm test

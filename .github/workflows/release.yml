@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read # for checkout
+
+jobs:
+  release:
+    name: Release
+    runs-on: macos-latest
+    permissions:
+      contents: write # to be able to publish a GitHub release
+      issues: write # to be able to comment on released issues
+      pull-requests: write # to be able to comment on released pull requests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # >= 23.6: node executes the TypeScript sources with no build step.
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Types
+        run: pnpm run types
+
+      - name: Test
+        run: pnpm test
+
+      # The plugins are not devDependencies on purpose: this machine cannot
+      # reach the npm registry, so adding them would desync pnpm-lock.yaml and
+      # break `--frozen-lockfile` above. CI has a registry, so they are fetched
+      # for this step only. `changelog`, `git` and `exec` do not ship with the
+      # semantic-release core and have to be named here to be resolvable.
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIT_AUTHOR_NAME: LSK.js
+          GIT_AUTHOR_EMAIL: lskjsru@gmail.com
+          GIT_COMMITTER_NAME: LSK.js
+          GIT_COMMITTER_EMAIL: lskjsru@gmail.com
+        run: >
+          npx
+          -p semantic-release
+          -p @semantic-release/changelog
+          -p @semantic-release/git
+          -p @semantic-release/exec
+          semantic-release
