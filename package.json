@@ -1,0 +1,97 @@
+{
+  "name": "tlgrm",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Supervisor for mcp-telegram daemons — keeps the MTProto connection owner alive outside your AI client",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/isuvorov/tlgrm.git"
+  },
+  "bin": {
+    "tlgrm": "./src/cli.ts"
+  },
+  "exports": {
+    ".": "./src/api.ts",
+    "./api": "./src/api.ts",
+    "./cli": "./src/cli.ts",
+    "./mcp": "./src/mcp.ts"
+  },
+  "files": [
+    "src",
+    "docs",
+    "config.schema.json"
+  ],
+  "scripts": {
+    "build": "echo 'no bundling: node runs TypeScript directly (>=23.6); parsing every source instead' && find src scripts -name '*.ts' -print0 | xargs -0 -n1 node --check",
+    "check": "npm run build && npm run types && npm run lint && npm test",
+    "dev:server": "node --watch src/cli.ts serve",
+    "dev": "node --import ./tests/preload.ts --test --watch tests/",
+    "config:schema": "node scripts/config-schema.ts",
+    "version:sync": "node scripts/sync-version.ts",
+    "serve": "node src/cli.ts serve",
+    "status": "node src/cli.ts status",
+    "doctor": "node src/cli.ts doctor",
+    "logs": "node src/cli.ts logs",
+    "mcp": "node src/cli.ts mcp",
+    "cli": "node src/cli.ts",
+    "link": "chmod +x src/cli.ts && npm link",
+    "unlink": "npm unlink -g tlgrm",
+    "test": "node --import ./tests/preload.ts --test tests/",
+    "types": "tsc --noEmit",
+    "lint": "biome check src tests scripts",
+    "fix": "biome check --write src tests scripts"
+  },
+  "release": {
+    "branches": [
+      "main"
+    ],
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/changelog",
+      [
+        "@semantic-release/npm",
+        {
+          "npmPublish": false
+        }
+      ],
+      [
+        "@semantic-release/exec",
+        {
+          "prepareCmd": "node scripts/sync-version.ts"
+        }
+      ],
+      "@semantic-release/github",
+      [
+        "@semantic-release/git",
+        {
+          "assets": [
+            "package.json",
+            "pnpm-lock.yaml",
+            "CHANGELOG.md",
+            "src/constants.ts"
+          ],
+          "message": "chore(release): v${nextRelease.version}\n\n${nextRelease.notes}\n\n[skip ci]"
+        }
+      ]
+    ]
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@overpod/mcp-telegram": "^1.41.5",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.0",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=23.6"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "os": [
+    "darwin"
+  ]
+}

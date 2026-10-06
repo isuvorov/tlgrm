@@ -1,0 +1,14 @@
+# Зависимости и локальный стор pnpm
+node_modules/
+.pnpm-store/
+
+# Секреты: TELEGRAM_API_ID / TELEGRAM_API_HASH. Шаблон — в .env.example
+.env
+.env.local
+
+# Логи демонов и MTProto-сессии: локальное состояние машины, не репозитория
+.sessions/
+*.log
+
+# macOS
+.DS_Store
