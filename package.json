@@ -26,7 +26,7 @@
     "build": "echo 'no bundling: node runs TypeScript directly (>=23.6); parsing every source instead' && find src scripts -name '*.ts' -print0 | xargs -0 -n1 node --check",
     "check": "npm run build && npm run types && npm run lint && npm test",
     "dev:server": "node --watch src/cli.ts serve",
-    "dev": "node --import ./tests/preload.ts --test --watch tests/",
+    "dev": "node --import ./tests/preload.ts --test --watch 'tests/**/*.test.ts'",
     "config:schema": "node scripts/config-schema.ts",
     "version:sync": "node scripts/sync-version.ts",
     "serve": "node src/cli.ts serve",
@@ -37,7 +37,7 @@
     "cli": "node src/cli.ts",
     "link": "chmod +x src/cli.ts && npm link",
     "unlink": "npm unlink -g tlgrm",
-    "test": "node --import ./tests/preload.ts --test tests/",
+    "test": "node --import ./tests/preload.ts --test 'tests/**/*.test.ts'",
     "types": "tsc --noEmit",
     "lint": "biome check src tests scripts",
     "fix": "biome check --write src tests scripts"
