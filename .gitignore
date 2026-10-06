@@ -12,3 +12,6 @@ node_modules/
 
 # macOS
 .DS_Store
+
+# Build output: tsdown → lib/, published to npm, not committed
+lib/

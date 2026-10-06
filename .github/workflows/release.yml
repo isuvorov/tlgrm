@@ -16,6 +16,7 @@ jobs:
       contents: write # to be able to publish a GitHub release
       issues: write # to be able to comment on released issues
       pull-requests: write # to be able to comment on released pull requests
+      id-token: write # to enable use of OIDC for trusted publishing and npm provenance
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,9 +29,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # >= 23.6: node executes the TypeScript sources with no build step.
+          # >= 23.6: node runs the TypeScript sources directly in dev and tests.
           node-version: 24
           cache: pnpm
+          registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -46,6 +48,9 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      - name: Ensure npm supports OIDC trusted publishing
+        run: npm i -g npm@latest
 
       # The plugins are not devDependencies on purpose: this machine cannot
       # reach the npm registry, so adding them would desync pnpm-lock.yaml and

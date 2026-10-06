@@ -4,7 +4,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as zm from "zod/mini";
 import { PACKAGE_NAME } from "./constants.ts";
 import { ACCOUNT_ENV, type Config } from "./utils/config.ts";
-import { socketPath } from "./utils/paths.ts";
+import { packageDistDir, socketPath } from "./utils/paths.ts";
 
 /**
  * The supervised package's internals, imported by path.
@@ -16,7 +16,9 @@ import { socketPath } from "./utils/paths.ts";
  * breaking rename shows up as a load error here rather than as silent drift.
  */
 function packageModule(config: Config, file: string): string {
-  return join(config.projectDir, "node_modules", PACKAGE_NAME, "dist", file);
+  const dist = packageDistDir(config);
+  if (!dist) throw new Error(`${PACKAGE_NAME} not found next to ${config.projectDir}`);
+  return join(dist, file);
 }
 
 interface IpcClientLike {

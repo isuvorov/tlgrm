@@ -1,5 +1,7 @@
 import { existsSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, extname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   ACCOUNT_DIR_MODE,
   LOCK_FILE,
@@ -69,19 +71,35 @@ export function legacyLogPath(config: Config, account: string): string {
 }
 
 /**
- * CLI of the supervised package. The pinned copy in the repo's node_modules
- * first, a global installation second: owner and client talk over a private IPC
+ * dist/ of the supervised package. The copy next to this checkout first, then
+ * wherever node resolves it from here — an npm install may hoist it out of
+ * our own node_modules.
+ */
+export function packageDistDir(config: Config): string | undefined {
+  const pinned = join(config.projectDir, "node_modules", PACKAGE_NAME, "dist");
+  if (existsSync(pinned)) return pinned;
+  try {
+    return dirname(createRequire(import.meta.url).resolve(PACKAGE_NAME));
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * CLI of the supervised package. The copy resolved for this install first, a
+ * global installation second: owner and client talk over a private IPC
  * protocol, so a version mismatch between them breaks every tool call.
  */
 export function packageCliPath(config: Config): string {
-  const pinned = join(config.projectDir, "node_modules", PACKAGE_NAME, "dist", "cli.js");
-  if (existsSync(pinned)) return pinned;
+  const dist = packageDistDir(config);
+  const pinned = dist ? join(dist, "cli.js") : undefined;
+  if (pinned && existsSync(pinned)) return pinned;
 
   const global = `/opt/homebrew/lib/node_modules/${PACKAGE_NAME}/dist/cli.js`;
   if (existsSync(global)) return global;
 
   throw new Error(
-    `CLI of ${PACKAGE_NAME} not found: neither ${pinned} nor ${global}. Install dependencies: pnpm install`,
+    `CLI of ${PACKAGE_NAME} not found: neither in ${config.projectDir}/node_modules nor ${global}. Install dependencies: pnpm install`,
   );
 }
 
@@ -96,6 +114,8 @@ export function nodeBin(): string {
 }
 
 /** This tool's own CLI — used when printing an MCP stdio registration. */
-export function ownCliPath(config: Config): string {
-  return join(config.projectDir, "src", "cli.ts");
+export function ownCliPath(): string {
+  // src/utils/paths.ts -> src/cli.ts, lib/utils/paths.js -> lib/cli.js
+  const self = fileURLToPath(import.meta.url);
+  return join(dirname(self), "..", `cli${extname(self)}`);
 }

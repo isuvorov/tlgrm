@@ -3,8 +3,8 @@
 [![LSK.js](https://github.com/lskjs/presets/raw/main/docs/badge.svg)](https://github.com/lskjs)
 [![Platform](https://img.shields.io/badge/platform-macOS-lightgrey.svg?logo=apple&logoColor=white)](#limitations)
 [![Node](https://img.shields.io/badge/node-%3E%3D23.6-green.svg)](https://nodejs.org)
-[![Build step](https://img.shields.io/badge/build%20step-none-success.svg)](#development)
-[![Private](https://img.shields.io/badge/private-not%20published-lightgrey.svg)](package.json)
+[![NPM version](https://badge.fury.io/js/tlgrm.svg)](https://www.npmjs.com/package/tlgrm)
+[![NPM downloads](https://img.shields.io/npm/dw/tlgrm.svg)](https://www.npmjs.com/package/tlgrm)
 [![Write us in Telegram](https://img.shields.io/badge/write%20us-0088CC?logo=telegram&logoColor=white)](https://t.me/isuvorov)
 
 <div align="center">
@@ -33,13 +33,18 @@ It exists because that package's connection owner dies with the editor session t
 ## Installation
 
 ```bash
+npm i -g tlgrm
+tlgrm login <account>
+```
+
+From a checkout — node runs the TypeScript sources directly since 23.6, the build to `lib/` is only for the published package:
+
+```bash
 pnpm install
 cp .env.example .env          # fill in TELEGRAM_API_ID / TELEGRAM_API_HASH
 node src/cli.ts login <account>
-npm run link                  # optional: puts `tlgrm` on PATH
+npm run link                  # optional: builds lib/ and puts `tlgrm` on PATH
 ```
-
-No build step: node executes TypeScript directly since 23.6.
 
 ---
 
@@ -345,14 +350,14 @@ npm run version:sync  # copy package.json's version into src/constants.ts
 
 **CI** (`.github/workflows/`) runs on macOS with pnpm and node 24 — `lts/*` is too old to execute the TypeScript sources. `test.yml` runs build, lint, types and tests on every pull request to `main`; `release.yml` repeats them on push to `main` and then runs `semantic-release`.
 
-Releases are version + CHANGELOG + GitHub release, **no npm publish** — the package is `private`. `semantic-release` is not a devDependency: it is fetched by `npx` in CI only, so `pnpm-lock.yaml` stays installable with `--frozen-lockfile`. Its prepare step runs `version:sync`, because `VERSION` in `src/constants.ts` is a literal and would otherwise drift from the released version — a test guards the same thing in between releases.
+Releases are version + CHANGELOG + GitHub release + npm publish of the `tsdown` build in `lib/`, authenticated by npm trusted publishing (OIDC, `id-token: write`) with provenance — no `NPM_TOKEN`. `semantic-release` is not a devDependency: it is fetched by `npx` in CI only, so `pnpm-lock.yaml` stays installable with `--frozen-lockfile`. Its prepare step runs `version:sync`, because `VERSION` in `src/constants.ts` is a literal and would otherwise drift from the released version — a test guards the same thing in between releases.
 
 ---
 
 ## Limitations
 
 - **macOS only** in practice: process and path assumptions are mac-shaped.
-- **node >= 23.6** — sources are TypeScript executed directly, with no build step.
+- **node >= 23.6** — in a checkout the TypeScript sources run directly; the npm package ships the build in `lib/`.
 - **Nothing survives the terminal.** `serve` is foreground by design; there is no supervisor that restarts an owner after a crash or a reboot.
 - **The Telegram IPC socket has no authentication.** Access control is POSIX permissions alone: the socket is `0600`, the account directory `0700`. Any process running as the same user can issue tool calls against the account. That is the supervised package's design.
 - **`npm run dev:server` can leave an account unserved.** The watcher restarts the supervisor without waiting for the old owners to finish shutting down, so the new one sees a still-answering socket and skips the account (`already owned by PID … — skipping`). Check `tlgrm status` after a restart that printed it — [details](docs/architecture.md#3-the-node---watch-restart-race).
@@ -362,7 +367,7 @@ Releases are version + CHANGELOG + GitHub release, **no npm publish** — the pa
 
 ## License
 
-Private and unpublished; no `LICENSE` file is shipped.
+No `LICENSE` file is shipped yet.
 
 ---
 

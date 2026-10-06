@@ -201,7 +201,7 @@ export async function serveAccounts(options: ServeOptions = {}): Promise<number>
           token: http.token,
           generated: http.generated,
           tokenEnv: TOKEN_ENV,
-          stdio: { command: nodeBin(), args: [ownCliPath(config), "mcp"] },
+          stdio: { command: nodeBin(), args: [ownCliPath(), "mcp"] },
           requestedPort: http.requestedPort,
           port: http.port,
         });

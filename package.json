@@ -1,7 +1,6 @@
 {
   "name": "tlgrm",
   "version": "0.0.1",
-  "private": true,
   "type": "module",
   "description": "Supervisor for mcp-telegram daemons — keeps the MTProto connection owner alive outside your AI client",
   "repository": {
@@ -9,21 +8,40 @@
     "url": "git+https://github.com/isuvorov/tlgrm.git"
   },
   "bin": {
-    "tlgrm": "./src/cli.ts"
+    "tlgrm": "lib/cli.js"
   },
+  "main": "lib/api.js",
+  "types": "lib/api.d.ts",
   "exports": {
-    ".": "./src/api.ts",
-    "./api": "./src/api.ts",
-    "./cli": "./src/cli.ts",
-    "./mcp": "./src/mcp.ts"
+    ".": {
+      "types": "./lib/api.d.ts",
+      "import": "./lib/api.js",
+      "default": "./lib/api.js"
+    },
+    "./api": {
+      "types": "./lib/api.d.ts",
+      "import": "./lib/api.js",
+      "default": "./lib/api.js"
+    },
+    "./cli": {
+      "types": "./lib/cli.d.ts",
+      "import": "./lib/cli.js",
+      "default": "./lib/cli.js"
+    },
+    "./mcp": {
+      "types": "./lib/mcp.d.ts",
+      "import": "./lib/mcp.js",
+      "default": "./lib/mcp.js"
+    }
   },
   "files": [
-    "src",
+    "lib",
     "docs",
-    "config.schema.json"
+    "config.schema.json",
+    "README.md"
   ],
   "scripts": {
-    "build": "echo 'no bundling: node runs TypeScript directly (>=23.6); parsing every source instead' && find src scripts -name '*.ts' -print0 | xargs -0 -n1 node --check",
+    "build": "tsdown",
     "check": "npm run build && npm run types && npm run lint && npm test",
     "dev:server": "node --watch src/cli.ts serve",
     "dev": "node --import ./tests/preload.ts --test --watch 'tests/**/*.test.ts'",
@@ -35,7 +53,7 @@
     "logs": "node src/cli.ts logs",
     "mcp": "node src/cli.ts mcp",
     "cli": "node src/cli.ts",
-    "link": "chmod +x src/cli.ts && npm link",
+    "link": "pnpm run build && npm link",
     "unlink": "npm unlink -g tlgrm",
     "test": "node --import ./tests/preload.ts --test 'tests/**/*.test.ts'",
     "types": "tsc --noEmit",
@@ -53,7 +71,8 @@
       [
         "@semantic-release/npm",
         {
-          "npmPublish": false
+          "npmPublish": true,
+          "provenance": true
         }
       ],
       [
@@ -85,6 +104,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
     "@types/node": "^24.0.0",
+    "tsdown": "^0.23.0",
     "typescript": "^5.9.0"
   },
   "engines": {
@@ -93,5 +113,9 @@
   "packageManager": "pnpm@10.33.0",
   "os": [
     "darwin"
-  ]
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
 }
