@@ -1,6 +1,6 @@
 {
   "name": "tlgrm",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "description": "Supervisor for mcp-telegram daemons — keeps the MTProto connection owner alive outside your AI client",
   "repository": {
