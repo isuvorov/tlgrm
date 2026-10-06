@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "JSON Schema for editor autocompletion",
+      "type": "string"
+    },
+    "port": {
+      "description": "HTTP + MCP port (TLGRM_PORT). Default 7717",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "host": {
+      "description": "Interface to bind (TLGRM_HOST). Default 127.0.0.1",
+      "type": "string",
+      "minLength": 1
+    },
+    "token": {
+      "description": "Bearer token for the HTTP API and MCP (TLGRM_TOKEN). Generated per run when unset",
+      "type": "string",
+      "minLength": 1
+    },
+    "account": {
+      "description": "Account an MCP call defaults to (TLGRM_ACCOUNT). Only needed with several",
+      "type": "string",
+      "minLength": 1
+    },
+    "accounts": {
+      "description": "Explicit account list (TLGRM_ACCOUNTS), replacing discovery from the session base",
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "mcpConfigs": {
+      "description": "MCP client configs for `doctor` to inspect (TLGRM_MCP_CONFIGS)",
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "logDir": {
+      "description": "Where owner logs are written (TLGRM_LOG_DIR). Default ~/.local/share/tlgrm/logs",
+      "type": "string",
+      "minLength": 1
+    },
+    "telegram": {
+      "description": "Settings read by @overpod/mcp-telegram itself",
+      "type": "object",
+      "properties": {
+        "apiId": {
+          "description": "Telegram app id (TELEGRAM_API_ID) — needed by the owner only",
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            }
+          ]
+        },
+        "apiHash": {
+          "description": "Telegram app hash (TELEGRAM_API_HASH) — needed by the owner only",
+          "type": "string",
+          "minLength": 1
+        },
+        "sessionPath": {
+          "description": "Session base DIRECTORY, one subdirectory per account (TELEGRAM_SESSION_PATH). Default ~/.mcp-telegram",
+          "type": "string",
+          "minLength": 1
+        },
+        "twoFactorPassword": {
+          "description": "Two-factor password for QR login (TELEGRAM_2FA_PASSWORD)",
+          "type": "string",
+          "minLength": 1
+        },
+        "useWss": {
+          "description": "Connect over WSS on 443 instead of port 80 (TELEGRAM_USE_WSS). Cannot be combined with a proxy",
+          "type": "boolean"
+        },
+        "logLevel": {
+          "description": "GramJS log level (TELEGRAM_LOG_LEVEL)",
+          "type": "string",
+          "enum": [
+            "none",
+            "error",
+            "warn",
+            "info",
+            "debug"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "patternProperties": {
+        "^(_|\\/\\/)": {}
+      }
+    }
+  },
+  "additionalProperties": false,
+  "patternProperties": {
+    "^(_|\\/\\/)": {}
+  },
+  "$id": "https://unpkg.com/tlgrm/config.schema.json",
+  "title": "tlgrm config"
+}
