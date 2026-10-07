@@ -11,7 +11,7 @@
   <h3><p><strong>📡 Run the Telegram connection owner in your terminal — start it, read the logs, Ctrl+C and it is gone 📡</strong></p></h3>
 </div>
 
-<img src="https://raw.githubusercontent.com/isuvorov/tlgrm/main/docs/logo.png" align="right" width="200" height="200" alt="tlgrm logo" />
+<img src="https://raw.githubusercontent.com/isuvorov/tlgrm/main/docs/logo.png" align="right" width="200" alt="tlgrm logo" />
 
 **▶️ One command** — `tlgrm serve` brings up an owner per account and streams their logs <br/>
 **👻 `daemon`** — `tlgrm daemon start|up|stop`: the server as a launchd LaunchAgent, up at login and after a crash <br/>
