@@ -36,7 +36,9 @@
   },
   "files": [
     "lib",
+    "assets",
     "docs",
+    "!docs/__logos",
     "config.schema.json",
     "README.md"
   ],
@@ -47,6 +49,7 @@
     "dev": "node --import ./tests/preload.ts --test --watch 'tests/**/*.test.ts'",
     "config:schema": "node scripts/config-schema.ts",
     "version:sync": "node scripts/sync-version.ts",
+    "build:icon": "node scripts/app-icon.ts",
     "serve": "node src/cli.ts serve",
     "status": "node src/cli.ts status",
     "doctor": "node src/cli.ts doctor",

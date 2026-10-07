@@ -11,6 +11,8 @@
   <h3><p><strong>📡 Run the Telegram connection owner in your terminal — start it, read the logs, Ctrl+C and it is gone 📡</strong></p></h3>
 </div>
 
+<img src="https://raw.githubusercontent.com/isuvorov/tlgrm/main/docs/logo.png" align="right" width="200" height="200" alt="tlgrm logo" />
+
 **▶️ One command** — `tlgrm serve` brings up an owner per account and streams their logs <br/>
 **🧹 No background magic** — no launchd, no plists; what you started is what runs <br/>
 **🧟 Orphan detection** — finds the dead-but-locked owner that silently blocks an account <br/>

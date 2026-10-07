@@ -27,7 +27,7 @@ import { errorMessage, isClientAbort } from "./utils/errors.ts";
 import { isInteractive, type LogExtra, logError, logRequest } from "./utils/logger.ts";
 import { logPath } from "./utils/paths.ts";
 import { MAX_PORT_ATTEMPTS } from "./utils/port.ts";
-import { FAVICON_SVG, getAuthPage, getHomePage } from "./web.ts";
+import { getAuthPage, getFavicon, getHomePage } from "./web.ts";
 
 /**
  * The HTTP + MCP-over-HTTP surface, started by `serve` in the same process as
@@ -273,11 +273,12 @@ export function createHttpServer(options: HttpOptions = {}): Server {
       return sendHtml(200, getHomePage());
     }
     if (url.pathname === "/favicon.ico" && method === "GET") {
+      const favicon = getFavicon();
       res.writeHead(200, {
-        "content-type": "image/svg+xml",
+        "content-type": favicon.type,
         "cache-control": "max-age=86400",
       });
-      res.end(FAVICON_SVG);
+      res.end(favicon.body);
       return log(200);
     }
     const liveness = () => ({ ok: true, name: BIN_NAME, version: VERSION });

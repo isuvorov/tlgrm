@@ -11,10 +11,27 @@
  * the page keeps working from a file the server reads out of its own source.
  */
 
+import { readFileSync } from "node:fs";
 import { BIN_NAME, VERSION } from "./constants.ts";
 
-/** 📡 as a favicon — served unauthenticated so the tab icon never 401s. */
+/** 📡 as a favicon — the fallback when assets/favicon.png is not next to the code. */
 export const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50%" y="85" text-anchor="middle" font-size="90">📡</text></svg>`;
+
+/**
+ * The tab icon, served unauthenticated so it never 401s: the logo's pixel circle
+ * (`npm run build:icon`), or the 📡 SVG. lib/ mirrors src/, so `../assets` resolves
+ * from both.
+ */
+export function getFavicon(): { type: string; body: Buffer | string } {
+  try {
+    return {
+      type: "image/png",
+      body: readFileSync(new URL("../assets/favicon.png", import.meta.url)),
+    };
+  } catch {
+    return { type: "image/svg+xml", body: FAVICON_SVG };
+  }
+}
 
 const BASE_CSS = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
