@@ -8,7 +8,7 @@
 export const BIN_NAME = "tlgrm";
 
 /** Shown by `--version`; kept in step with package.json by hand. */
-export const VERSION = "0.0.2";
+export const VERSION = "0.1.0";
 
 /** Prefix for this tool's own environment variables. */
 export const ENV_PREFIX = BIN_NAME.toUpperCase();
