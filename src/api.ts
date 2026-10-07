@@ -6,6 +6,15 @@
  * `config` it is loaded on demand.
  */
 
+export type { DaemonResult, DaemonStatus } from "./api/daemon.ts";
+export {
+  DAEMON_LABEL,
+  daemonStart,
+  daemonStatus,
+  daemonStop,
+  daemonUp,
+  renderDaemonPlist,
+} from "./api/daemon.ts";
 export type { DoctorReport, Finding, Severity } from "./api/doctor.ts";
 export { doctor } from "./api/doctor.ts";
 export type { AccountHealth, AccountStatus } from "./api/get-status.ts";

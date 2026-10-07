@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import "./settings/autoload.ts";
-import { realpathSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { readFileSync, realpathSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { daemonStart, daemonStatus, daemonStop, daemonUp } from "./api/daemon.ts";
 import { doctor } from "./api/doctor.ts";
 import { getStatus } from "./api/get-status.ts";
 import { listOrphans } from "./api/list-orphans.ts";
@@ -11,18 +14,21 @@ import { startDaemon } from "./api/start-daemon.ts";
 import { stopDaemon } from "./api/stop-daemon.ts";
 import { tailLogs } from "./api/tail-logs.ts";
 import { BIN_NAME, PACKAGE_NAME, VERSION } from "./constants.ts";
-import { loadUserConfig } from "./settings/load.ts";
-import { ACCOUNTS_ENV, type Config, loadConfig } from "./utils/config.ts";
+import { loadUserConfig, saveUserConfig } from "./settings/load.ts";
+import { type Config, loadConfig } from "./utils/config.ts";
 import {
   colorSeverity,
+  configBlock,
   formatAccountStatus,
   SEVERITY_ICON,
   suggestCommand,
 } from "./utils/format.ts";
 import {
+  blue,
   bold,
   cyan,
   dim,
+  green,
   red,
   setColor,
   write,
@@ -59,7 +65,7 @@ export interface Args {
 }
 
 export function parseArgs(argv: string[]): Args {
-  const [command = "status", ...rest] = argv;
+  const [command = "", ...rest] = argv;
   const args: Args = {
     command,
     accounts: [],
@@ -133,28 +139,109 @@ function targets(args: Args, config: Config): string[] {
   return args.accounts.length > 0 ? args.accounts : config.accounts;
 }
 
-const HELP = `${BIN_NAME} — keeps the Telegram connection owner alive
+// Same layout as awesome-things (yargs): usage, main and other commands,
+// options with their type, then a copy-pasteable MCP registration.
+const HELP_COMMANDS: [string, string][] = [
+  ["info", "Show package, installation and environment info"],
+  ["mcp", "Start MCP server (stdio transport)"],
+  [
+    "server [account ...]",
+    "Start owners and the HTTP API server with MCP-over-HTTP  [aliases: serve]",
+  ],
+  ["logs [account ...]", "Show the owner logs (tail of the log files)"],
+  ["daemon", "Run the HTTP server in the background (launchd, macOS)"],
+  ["start [account ...]", "Run an owner in the background"],
+  ["stop [account ...]", "Stop a background owner"],
+];
 
-  ${BIN_NAME} serve [account ...]       owners + HTTP/MCP in the foreground (Ctrl+C stops all)
-  ${BIN_NAME} status [account ...]      who owns the connection
-  ${BIN_NAME} doctor                    aggregate diagnosis and how to fix it
-  ${BIN_NAME} logs [account ...] -n 40  tail an owner log
-  ${BIN_NAME} orphans                   package processes in the system
-  ${BIN_NAME} login <account>           QR login into the account's session
-  ${BIN_NAME} mcp                       MCP server on stdio
-  ${BIN_NAME} info                      versions and discovered accounts
+const HELP_OTHER_COMMANDS: [string, string][] = [
+  ["status [account ...]", "Show who owns the connection"],
+  ["doctor", "Diagnose the setup and say how to fix it"],
+  ["orphans", "List package processes in the system"],
+  ["login <account>", "QR login into the account's session"],
+  ["config save", "Write the current environment (.env included) into the config file"],
+];
 
-  ${BIN_NAME} start|stop [account ...]  start or stop an owner in the background
+const HELP_OPTIONS: [string, string, string][] = [
+  ["    --json", "Output as JSON", "[boolean] [default: false]"],
+  ["-n, --lines", "Log lines to show", "[number]"],
+  ["    --port", "HTTP port", "[number] [default: 7717]"],
+  ["    --host", "Bind address", '[string] [default: "127.0.0.1"]'],
+  ["    --token", "Pin the bearer token", "[string]"],
+  ["    --no-http", "Owners only, no port", "[boolean]"],
+  ["    --no-color", "Disable colours", "[boolean]"],
+  ["-h, --help", "Show help", "[boolean]"],
+  ["-v, --version", "Show version number", "[boolean]"],
+];
 
-Flags: --json  machine-readable        --lines N, -n N  log lines
-       --port N  HTTP port             --token T  pin the bearer token
-       --host H  bind address          --no-http  owners only, no port
-       --no-color                      --version
+export function formatHelp(): string {
+  const width = 80;
+  // Word-wrap to the column, the way yargs does: continuation lines start
+  // under the description, not at the left edge.
+  const wrap = (text: string, room: number): string[] => {
+    const lines: string[] = [];
+    let line = "";
+    for (const word of text.split(" ")) {
+      if (line && line.length + 1 + word.length > room) {
+        lines.push(line);
+        line = word;
+      } else line = line ? `${line} ${word}` : word;
+    }
+    lines.push(line);
+    return lines;
+  };
+  const alignRight = (tag: string) => `${" ".repeat(width - tag.length)}${tag}`;
 
-With no account, a command applies to every account found in the session base
-(override with ${ACCOUNTS_ENV}).`;
+  const commands = (rows: [string, string][]) => {
+    const pad = Math.max(
+      ...[...HELP_COMMANDS, ...HELP_OTHER_COMMANDS].map(([c]) => c.length),
+    );
+    const indent = 2 + BIN_NAME.length + 1 + pad + 2;
+    const out: string[] = [];
+    rows.forEach(([command, text], i) => {
+      const [desc = "", alias] = text.split("  ");
+      const body = wrap(desc, width - indent);
+      const gap = " ".repeat(pad - command.length);
+      out.push(`  ${green(BIN_NAME)} ${cyan(command)}${gap}  ${body[0]}`);
+      for (const more of body.slice(1)) out.push(`${" ".repeat(indent)}${more}`);
+      if (alias) out.push(alignRight(alias));
+      // yargs separates a multi-line entry from the next one.
+      if ((body.length > 1 || alias) && i < rows.length - 1) out.push("");
+    });
+    return out;
+  };
+
+  const optionPad = Math.max(...HELP_OPTIONS.map(([flag]) => flag.length));
+  const options = HELP_OPTIONS.flatMap(([flag, desc, tag]) => {
+    const left = `  ${flag.padEnd(optionPad)}  ${desc}`;
+    if (left.length + 1 + tag.length <= width) {
+      return [`${left}${" ".repeat(width - left.length - tag.length)}${tag}`];
+    }
+    return [left, alignRight(tag)];
+  });
+
+  return [
+    `${BIN_NAME} <command> [options]`,
+    "",
+    yellow("Commands:"),
+    ...commands(HELP_COMMANDS),
+    "",
+    yellow("Other commands:"),
+    ...commands(HELP_OTHER_COMMANDS),
+    "",
+    yellow("Options:"),
+    ...options,
+    "",
+    ...configBlock("MCP config (CLI)", {
+      mcpServers: { [BIN_NAME]: { command: `npx -y ${BIN_NAME} mcp` } },
+    }),
+  ].join("\n");
+}
 
 const COMMANDS = [
+  "server",
+  "daemon",
+  "config",
   "serve",
   "status",
   "doctor",
@@ -168,6 +255,18 @@ const COMMANDS = [
   "help",
 ];
 
+/** `tail -F` until Ctrl+C: -F survives the log being created or rotated. */
+function followLog(path: string, lines: number): Promise<number> {
+  return new Promise((resolve) => {
+    const tail = spawn("tail", ["-n", String(lines), "-F", path], { stdio: "inherit" });
+    process.once("SIGINT", () => {
+      tail.kill("SIGTERM");
+      resolve(0);
+    });
+    tail.on("exit", () => resolve(0));
+  });
+}
+
 export async function run(argv: string[]): Promise<number> {
   const args = parseArgs(argv);
   // --json must never be polluted by escape codes, and --no-color is explicit.
@@ -178,9 +277,15 @@ export async function run(argv: string[]): Promise<number> {
     return 0;
   }
 
-  if (args.command === "help" || args.command === "--help" || args.command === "-h") {
-    console.log(HELP);
+  if (args.command === "help" || argv.includes("--help") || argv.includes("-h")) {
+    console.log(formatHelp());
     return 0;
+  }
+
+  if (args.command === "") {
+    console.error(formatHelp());
+    console.error(red("Please specify a command"));
+    return 1;
   }
 
   // An unrecognised flag is an error, not something to shrug off.
@@ -197,6 +302,7 @@ export async function run(argv: string[]): Promise<number> {
 
   switch (args.command) {
     case "serve":
+    case "server":
       return serveAccounts({
         accounts: args.accounts,
         config,
@@ -265,6 +371,69 @@ export async function run(argv: string[]): Promise<number> {
       if (args.json) out(results);
       else for (const r of results) write(`${bold(r.account)}  ${r.message}`);
       return results.every((r) => r.stopped) ? 0 : 1;
+    }
+
+    case "daemon": {
+      const sub = args.accounts[0] ?? "status";
+      const actions = { start: daemonStart, up: daemonUp, stop: daemonStop };
+      if (sub === "status") {
+        const status = daemonStatus({ config });
+        if (args.json) out(status);
+        else {
+          const state = status.running
+            ? green(`running (PID ${status.pid})`)
+            : status.loaded
+              ? yellow("loaded, not running")
+              : dim("not running");
+          write(`${bold("daemon")}  ${state}`);
+          write(dim(`  plist  ${status.plist}${status.installed ? "" : " (absent)"}`));
+          write(dim(`  log    ${status.log}`));
+        }
+        return 0;
+      }
+      if (!(sub in actions)) {
+        writeError(`${red("✗")} Unknown daemon command: ${bold(sub)}`);
+        writeError(dim(`  ${BIN_NAME} daemon <start|up|stop|status>`));
+        return 1;
+      }
+      const r = actions[sub as keyof typeof actions]({ config });
+      if (args.json) out(r);
+      else {
+        const pid = r.pid ? dim(` (PID ${r.pid})`) : "";
+        write(`${bold("daemon")}  ${r.ok ? r.message : red(r.message)}${pid}`);
+        if (sub !== "stop") {
+          write(dim(`  plist  ${r.plist}`));
+          write(dim(`  log    ${r.log}`));
+          if (r.tokenWarning) write(`${yellow("!")} ${r.tokenWarning}`);
+        }
+      }
+      if (!r.ok || sub !== "up" || args.json) return r.ok ? 0 : 1;
+      // `up` stays attached to the log, like `docker compose up`. Ctrl+C only
+      // detaches: the daemon belongs to launchd and keeps running.
+      write(dim(`── ${r.log}  (Ctrl+C detaches, the daemon keeps running)`));
+      return followLog(r.log, args.lines ?? 40);
+    }
+
+    case "config": {
+      const sub = args.accounts[0];
+      if (sub !== "save") {
+        writeError(`${red("✗")} Unknown config command: ${bold(sub ?? "(none)")}`);
+        writeError(dim(`  ${BIN_NAME} config save`));
+        return 1;
+      }
+      // .env first, the real environment on top — the same precedence the
+      // tool itself applies when it reads them.
+      const saved = saveUserConfig({ ...config.env, ...process.env });
+      if (args.json) out(saved);
+      else {
+        write(`${green("✓")} ${saved.path}`);
+        write(
+          dim(
+            `  ${saved.keys.length > 0 ? saved.keys.join(", ") : "nothing set in the environment"}`,
+          ),
+        );
+      }
+      return 0;
     }
 
     case "logs": {
@@ -352,11 +521,39 @@ export async function run(argv: string[]): Promise<number> {
         logBase: config.logBase,
         accounts: config.accounts,
       };
-      if (args.json) out(info);
-      else
-        for (const [key, value] of Object.entries(info)) {
-          write(`${dim(`${key}:`.padEnd(16))} ${value}`);
-        }
+      if (args.json) {
+        out(info);
+        return 0;
+      }
+      // Same layout as awesome-things `info`: one `ℹ <bin> [Key] value` row each.
+      const pkg = JSON.parse(
+        readFileSync(join(dirname(info.cli), "..", "package.json"), "utf-8"),
+      ) as {
+        description?: string;
+      };
+      const rows: [string, string][] = [
+        ["Name", BIN_NAME],
+        ["Version", VERSION],
+        ["Description", pkg.description ?? ""],
+        ["CWD", process.cwd()],
+        ["Bin", info.cli],
+        [
+          "Source",
+          info.cli.includes("/node_modules/")
+            ? "npm (installed package)"
+            : "source (local checkout)",
+        ],
+        ["Platform", `${process.platform} ${process.arch}`],
+        ["Runtime", `node v${process.versions.node}`],
+        ["Node", process.version],
+        ["Config", info.config],
+        ["SessionBase", config.sessionBase],
+        ["LogBase", config.logBase],
+        ["Accounts", config.accounts.join(",") || "none"],
+      ];
+      for (const [key, value] of rows) {
+        write(` ${blue("ℹ")} ${dim(BIN_NAME)} ${`[${key}]`.padEnd(16)} ${value}`);
+      }
       return 0;
     }
 

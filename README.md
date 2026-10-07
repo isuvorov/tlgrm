@@ -14,7 +14,7 @@
 <img src="https://raw.githubusercontent.com/isuvorov/tlgrm/main/docs/logo.png" align="right" width="200" height="200" alt="tlgrm logo" />
 
 **▶️ One command** — `tlgrm serve` brings up an owner per account and streams their logs <br/>
-**🧹 No background magic** — no launchd, no plists; what you started is what runs <br/>
+**👻 `daemon`** — `tlgrm daemon start|up|stop`: the server as a launchd LaunchAgent, up at login and after a crash <br/>
 **🧟 Orphan detection** — finds the dead-but-locked owner that silently blocks an account <br/>
 **🚦 Three-state liveness** — `alive` / `dead` / `unknown`, so a sandboxed probe never kills a healthy owner <br/>
 **🩺 `doctor`** — names every real misconfiguration and how to fix it <br/>
@@ -65,11 +65,12 @@ tlgrm login <account>             # QR login
 tlgrm info                        # versions, session base, discovered accounts
 
 tlgrm start|stop [account ...]    # background owner, when you do want it detached
+tlgrm daemon start|up|stop|status # `server` under launchd: survives logout, crashes and reboots
 ```
 
 Flags: `--json`, `--lines N` / `-n N`, `--no-color`, `--version`.
 
-`serve` is the normal mode. The owners are child processes of that command: their output is its output and Ctrl+C takes them down with it. Nothing survives the terminal — if you want them to outlive it, leave `serve` running in a tmux pane.
+`serve` is the normal mode. The owners are child processes of that command: their output is its output and Ctrl+C takes them down with it. Nothing survives the terminal — to keep it running, use `tlgrm daemon start`: the same `server` as a launchd LaunchAgent (`~/Library/LaunchAgents/com.tlgrm.server.plist`), started at login and restarted after a crash, logging to `~/.local/share/tlgrm/logs/daemon.log`. `daemon up` rewrites the plist and restarts it (after an update or `link`), `daemon stop` stops it and removes the plist. Pin `token` in the config first, or every restart drops your MCP clients.
 
 `start` / `stop` exist for the detached case: `start` spawns an owner and returns, `stop` signals it. No supervisor watches it, so after a crash you start it again yourself.
 

@@ -1,9 +1,17 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { z } from "zod";
 import { BIN_NAME, ENV_PREFIX } from "../constants.ts";
 import {
+  fromEnvironment,
   stripCommentKeys,
   toEnvironment,
   type UserConfig,
@@ -96,4 +104,38 @@ export function loadUserConfig(): AppliedConfig {
  */
 export function appliedKeys(): ReadonlySet<string> {
   return new Set(current?.keys ?? []);
+}
+
+export interface SavedConfig {
+  path: string;
+  /** Env names whose value went into the file. */
+  keys: string[];
+}
+
+/**
+ * `config save`: write the current environment (.env included) into the config
+ * file, on top of what the file already has. Owner-only permissions, since it
+ * ends up holding the Telegram credentials and the token.
+ */
+export function saveUserConfig(
+  env: Record<string, string | undefined>,
+  path: string = configPath(homedir(), env),
+): SavedConfig {
+  const existing = existsSync(path)
+    ? parseUserConfig(readFileSync(path, "utf-8"), path)
+    : {};
+  const fresh = fromEnvironment(env);
+  const merged: UserConfig = {
+    $schema: `https://unpkg.com/${BIN_NAME}/config.schema.json`,
+    ...existing,
+    ...fresh,
+    ...(existing.telegram || fresh.telegram
+      ? { telegram: { ...existing.telegram, ...fresh.telegram } }
+      : {}),
+  };
+  userConfigSchema.parse(merged);
+  mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+  writeFileSync(path, `${JSON.stringify(merged, null, 2)}\n`, { mode: 0o600 });
+  chmodSync(path, 0o600);
+  return { path, keys: toEnvironment(fresh).map((e) => e.name) };
 }

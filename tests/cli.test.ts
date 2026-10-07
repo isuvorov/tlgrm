@@ -5,9 +5,9 @@ import { parseArgs } from "../src/cli.ts";
 import { VERSION } from "../src/constants.ts";
 
 describe("parseArgs", () => {
-  test("defaults to status with no positionals", () => {
+  test("no command with no positionals — run() prints help", () => {
     const args = parseArgs([]);
-    assert.equal(args.command, "status");
+    assert.equal(args.command, "");
     assert.deepEqual(args.accounts, []);
   });
 

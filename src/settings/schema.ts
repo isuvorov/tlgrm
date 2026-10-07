@@ -169,6 +169,50 @@ export function toEnvironment(
   return entries;
 }
 
+/**
+ * The inverse of `toEnvironment()`: what `config save` writes. Unset and empty
+ * variables are left out, so the file holds only what is actually configured.
+ */
+export function fromEnvironment(env: Record<string, string | undefined>): UserConfig {
+  const get = (name: string) => {
+    const value = env[name]?.trim();
+    return value ? value : undefined;
+  };
+  const config: UserConfig = {};
+  const port = get(ownEnv.port);
+  if (port && /^\d+$/.test(port)) config.port = Number(port);
+  const host = get(ownEnv.host);
+  if (host) config.host = host;
+  const token = get(ownEnv.token);
+  if (token) config.token = token;
+  const account = get(ownEnv.account);
+  if (account) config.account = account;
+  const accounts = get(ownEnv.accounts);
+  if (accounts) config.accounts = accounts.split(/[\s,]+/).filter(Boolean);
+  const mcpConfigs = get(ownEnv.mcpConfigs);
+  if (mcpConfigs) config.mcpConfigs = mcpConfigs.split(":").filter(Boolean);
+  const logDir = get(ownEnv.logDir);
+  if (logDir) config.logDir = logDir;
+
+  const telegram: NonNullable<UserConfig["telegram"]> = {};
+  const apiId = get("TELEGRAM_API_ID");
+  if (apiId) telegram.apiId = /^\d+$/.test(apiId) ? Number(apiId) : apiId;
+  const apiHash = get("TELEGRAM_API_HASH");
+  if (apiHash) telegram.apiHash = apiHash;
+  const sessionPath = get("TELEGRAM_SESSION_PATH");
+  if (sessionPath) telegram.sessionPath = sessionPath;
+  const twoFactorPassword = get("TELEGRAM_2FA_PASSWORD");
+  if (twoFactorPassword) telegram.twoFactorPassword = twoFactorPassword;
+  const useWss = get("TELEGRAM_USE_WSS");
+  if (useWss && !/^(0|false|no)$/i.test(useWss)) telegram.useWss = true;
+  const logLevel = get("TELEGRAM_LOG_LEVEL");
+  if (logLevel && ["none", "error", "warn", "info", "debug"].includes(logLevel)) {
+    telegram.logLevel = logLevel as NonNullable<UserConfig["telegram"]>["logLevel"];
+  }
+  if (Object.keys(telegram).length > 0) config.telegram = telegram;
+  return config;
+}
+
 /** What `config.schema.json` contains — generated, never hand-edited. */
 export function configJsonSchema(): Record<string, unknown> {
   const schema = z.toJSONSchema(userConfigSchema, { io: "input" });

@@ -70,7 +70,7 @@ export interface StartupBanner {
   port: number;
 }
 
-function configBlock(label: string, config: unknown): string[] {
+export function configBlock(label: string, config: unknown): string[] {
   const lines = [dim(`  ── ${label} ──`)];
   for (const line of JSON.stringify(config, null, 2).split("\n")) {
     lines.push(`  ${dim(line)}`);
